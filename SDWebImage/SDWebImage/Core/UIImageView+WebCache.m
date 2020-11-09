@@ -45,12 +45,14 @@
     [self sd_setImageWithURL:url placeholderImage:placeholder options:options context:nil progress:progressBlock completed:completedBlock];
 }
 
+// 上面的所有方法都进入这个全能方法中
 - (void)sd_setImageWithURL:(nullable NSURL *)url
           placeholderImage:(nullable UIImage *)placeholder
                    options:(SDWebImageOptions)options
                    context:(nullable SDWebImageContext *)context
                   progress:(nullable SDImageLoaderProgressBlock)progressBlock
                  completed:(nullable SDExternalCompletionBlock)completedBlock {
+    // 没有实现,只是调用UIView+WebCache中的一个方法
     [self sd_internalSetImageWithURL:url
                     placeholderImage:placeholder
                              options:options

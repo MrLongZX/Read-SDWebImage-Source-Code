@@ -59,26 +59,35 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
     } else {
         context = [NSDictionary dictionary];
     }
+    
+    // 获取操作密钥
     NSString *validOperationKey = context[SDWebImageContextSetImageOperationKey];
     if (!validOperationKey) {
         // pass through the operation key to downstream, which can used for tracing operation or image view class
+        // 如果没有,就用当前类的类名作为操作密钥，并保存类名密钥到context字典中
         validOperationKey = NSStringFromClass([self class]);
         SDWebImageMutableContext *mutableContext = [context mutableCopy];
         mutableContext[SDWebImageContextSetImageOperationKey] = validOperationKey;
         context = [mutableContext copy];
     }
+    // 保存到最新操作密钥属性
     self.sd_latestOperationKey = validOperationKey;
+    // 取消该密钥对应的图片加载操作
     [self sd_cancelImageLoadOperationWithKey:validOperationKey];
+    // 保存图片URL
     self.sd_imageURL = url;
     
+    // 如果没有选择延迟加载占位图
     if (!(options & SDWebImageDelayPlaceholder)) {
         dispatch_main_async_safe(^{
+            // 在主线程主队列中设置占位图
             [self sd_setImage:placeholder imageData:nil basedOnClassOrViaCustomSetImageBlock:setImageBlock cacheType:SDImageCacheTypeNone imageURL:url];
         });
     }
     
     if (url) {
         // reset the progress
+        // 重置图片加载进度
         NSProgress *imageProgress = objc_getAssociatedObject(self, @selector(sd_imageProgress));
         if (imageProgress) {
             imageProgress.totalUnitCount = 0;
@@ -90,6 +99,7 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
         [self sd_startImageIndicator];
         id<SDWebImageIndicator> imageIndicator = self.sd_imageIndicator;
 #endif
+        // 生成图片管理者，如果context中有就用context中的，否则就直接生成
         SDWebImageManager *manager = context[SDWebImageContextCustomManager];
         if (!manager) {
             manager = [SDWebImageManager sharedManager];
