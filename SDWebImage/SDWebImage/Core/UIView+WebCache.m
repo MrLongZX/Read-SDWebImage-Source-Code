@@ -96,6 +96,7 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
         
 #if SD_UIKIT || SD_MAC
         // check and start image indicator
+        // 展示图片加载指示器
         [self sd_startImageIndicator];
         id<SDWebImageIndicator> imageIndicator = self.sd_imageIndicator;
 #endif
@@ -105,11 +106,13 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
             manager = [SDWebImageManager sharedManager];
         } else {
             // remove this manager to avoid retain cycle (manger -> loader -> operation -> context -> manager)
+            // 移除图片管理者,避免循环引用
             SDWebImageMutableContext *mutableContext = [context mutableCopy];
             mutableContext[SDWebImageContextCustomManager] = nil;
             context = [mutableContext copy];
         }
         
+        // 生成一个代码块用来在下载图片的方法中监听进度并进行回调
         SDImageLoaderProgressBlock combinedProgressBlock = ^(NSInteger receivedSize, NSInteger expectedSize, NSURL * _Nullable targetURL) {
             if (imageProgress) {
                 imageProgress.totalUnitCount = expectedSize;
@@ -132,10 +135,14 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
             }
         };
         @weakify(self);
+        // 生成图片操作对象，并开始下载图片
         id <SDWebImageOperation> operation = [manager loadImageWithURL:url options:options context:context progress:combinedProgressBlock completed:^(UIImage *image, NSData *data, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
+            // weakself -> strongself
             @strongify(self);
+            // 如果没有生成强引用的self就终止执行
             if (!self) { return; }
             // if the progress not been updated, mark it to complete state
+            // 如果已经完成并且没有错误，并且进度没有更新，就将进度状态设为未知
             if (imageProgress && finished && !error && imageProgress.totalUnitCount == 0 && imageProgress.completedUnitCount == 0) {
                 imageProgress.totalUnitCount = SDWebImageProgressUnitCountUnknown;
                 imageProgress.completedUnitCount = SDWebImageProgressUnitCountUnknown;
@@ -144,18 +151,25 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
 #if SD_UIKIT || SD_MAC
             // check and stop image indicator
             if (finished) {
+                // 隐藏图片加载指示器
                 [self sd_stopImageIndicator];
             }
 #endif
             
+            // 是否应该回调完成block： 如果已经完成或者设置了在设置图片前处理
             BOOL shouldCallCompletedBlock = finished || (options & SDWebImageAvoidAutoSetImage);
+            // 是否应该不设置图片： 如果有图片但设置了在设置图片前处理，或者没有图片并且没有设置延迟加载占位图
             BOOL shouldNotSetImage = ((image && (options & SDWebImageAvoidAutoSetImage)) ||
                                       (!image && !(options & SDWebImageDelayPlaceholder)));
+            // 生成完成回调代码块
             SDWebImageNoParamsBlock callCompletedBlockClojure = ^{
+                // 如果没有生成强引用的self就终止执行
                 if (!self) { return; }
+                // 如果需要设置图片就直接刷新视图
                 if (!shouldNotSetImage) {
                     [self sd_setNeedsLayout];
                 }
+                // 如果传入了回调block并且应该进行回调，就直接回调
                 if (completedBlock && shouldCallCompletedBlock) {
                     completedBlock(image, data, error, cacheType, finished, url);
                 }
@@ -164,7 +178,9 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
             // case 1a: we got an image, but the SDWebImageAvoidAutoSetImage flag is set
             // OR
             // case 1b: we got no image and the SDWebImageDelayPlaceholder is not set
+            // 如果不需要设置图片
             if (shouldNotSetImage) {
+                // 在主线程主队列中调用上面生成的完成回调代码块，并且不再向下执行
                 dispatch_main_async_safe(callCompletedBlockClojure);
                 return;
             }
@@ -173,16 +189,19 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
             NSData *targetData = nil;
             if (image) {
                 // case 2a: we got an image and the SDWebImageAvoidAutoSetImage is not set
+                // 如果图片下载成功就用变量保存图片
                 targetImage = image;
                 targetData = data;
             } else if (options & SDWebImageDelayPlaceholder) {
                 // case 2b: we got no image and the SDWebImageDelayPlaceholder flag is set
+                // 如果图片下载失败并且设置了延迟加载占位图，就保存占位图
                 targetImage = placeholder;
                 targetData = nil;
             }
             
 #if SD_UIKIT || SD_MAC
             // check whether we should use the image transition
+            // 检查一下是否应该转换图片：如果下载完成，并且设置了图片强制转换或者图片缓存类型是不缓存直接从网络加载，就进行强制转换
             SDWebImageTransition *transition = nil;
             BOOL shouldUseTransition = NO;
             if (options & SDWebImageForceTransition) {
@@ -212,19 +231,24 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
 #endif
             dispatch_main_async_safe(^{
 #if SD_UIKIT || SD_MAC
+                // 在主线程主队列中设置图片
                 [self sd_setImage:targetImage imageData:targetData basedOnClassOrViaCustomSetImageBlock:setImageBlock transition:transition cacheType:cacheType imageURL:imageURL];
 #else
                 [self sd_setImage:targetImage imageData:targetData basedOnClassOrViaCustomSetImageBlock:setImageBlock cacheType:cacheType imageURL:imageURL];
 #endif
+                // 调用完成回调代码块
                 callCompletedBlockClojure();
             });
         }];
+        // 根据密钥保存下载图片的操作
         [self sd_setImageLoadOperation:operation forKey:validOperationKey];
     } else {
 #if SD_UIKIT || SD_MAC
+        // 隐藏图片加载指示器
         [self sd_stopImageIndicator];
 #endif
         dispatch_main_async_safe(^{
+            // 在主线程,返回错误信息
             if (completedBlock) {
                 NSError *error = [NSError errorWithDomain:SDWebImageErrorDomain code:SDWebImageErrorInvalidURL userInfo:@{NSLocalizedDescriptionKey : @"Image url is nil"}];
                 completedBlock(nil, nil, error, SDImageCacheTypeNone, YES, url);
@@ -389,6 +413,7 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
 
 #pragma mark - Indicator
 - (id<SDWebImageIndicator>)sd_imageIndicator {
+    // 通过关联对象获取图片加载指示器(菊花)
     return objc_getAssociatedObject(self, @selector(sd_imageIndicator));
 }
 
@@ -415,21 +440,27 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
 }
 
 - (void)sd_startImageIndicator {
+    // 获取加载指示器(菊花)
     id<SDWebImageIndicator> imageIndicator = self.sd_imageIndicator;
     if (!imageIndicator) {
+        // 没有则返回
         return;
     }
     dispatch_main_async_safe(^{
+        // 在主线程,展示菊花并开始动画
         [imageIndicator startAnimatingIndicator];
     });
 }
 
 - (void)sd_stopImageIndicator {
+    // 获取加载指示器(菊花)
     id<SDWebImageIndicator> imageIndicator = self.sd_imageIndicator;
     if (!imageIndicator) {
+        // 没有则返回
         return;
     }
     dispatch_main_async_safe(^{
+        // 在主线程,菊花停止动画并隐藏
         [imageIndicator stopAnimatingIndicator];
     });
 }
