@@ -276,12 +276,17 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
 #endif
 }
 
+// 将图片设置到控件上的主方法
 #if SD_UIKIT || SD_MAC
 - (void)sd_setImage:(UIImage *)image imageData:(NSData *)imageData basedOnClassOrViaCustomSetImageBlock:(SDSetImageBlock)setImageBlock transition:(SDWebImageTransition *)transition cacheType:(SDImageCacheType)cacheType imageURL:(NSURL *)imageURL {
+    // 获取到当前视图
     UIView *view = self;
+    // 设置临时变量保存设置图片代码块
     SDSetImageBlock finalSetImageBlock;
+    // 如果设置了设置图片代码块就直接设置代码块
     if (setImageBlock) {
         finalSetImageBlock = setImageBlock;
+    // 如果是该类是图片视图，就创建设置图片代码块并在其中为图片视图设置图片
     } else if ([view isKindOfClass:[UIImageView class]]) {
         UIImageView *imageView = (UIImageView *)view;
         finalSetImageBlock = ^(UIImage *setImage, NSData *setImageData, SDImageCacheType setCacheType, NSURL *setImageURL) {
@@ -289,6 +294,7 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
         };
     }
 #if SD_UIKIT
+    // 如果是该类是按钮，就创建设置图片代码块并在其中为按钮在正常状态下设置图片
     else if ([view isKindOfClass:[UIButton class]]) {
         UIButton *button = (UIButton *)view;
         finalSetImageBlock = ^(UIImage *setImage, NSData *setImageData, SDImageCacheType setCacheType, NSURL *setImageURL) {
@@ -305,6 +311,7 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
     }
 #endif
     
+    // 如果设置了过度
     if (transition) {
         NSString *originalOperationKey = view.sd_latestOperationKey;
 
@@ -314,17 +321,21 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
                 return;
             }
             // 0 duration to let UIKit render placeholder and prepares block
+            // 如果在展示过渡动画之前设置了要执行的代码块就先执行
             if (transition.prepares) {
                 transition.prepares(view, image, imageData, cacheType, imageURL);
             }
         } completion:^(BOOL finished) {
+            // 开始执行动画
             [UIView transitionWithView:view duration:transition.duration options:transition.animationOptions animations:^{
                 if (!view.sd_latestOperationKey || ![originalOperationKey isEqualToString:view.sd_latestOperationKey]) {
                     return;
                 }
+                // 如果设置了代码块并且没设置避免自动设置图片，就直接传参并调用代码块
                 if (finalSetImageBlock && !transition.avoidAutoSetImage) {
                     finalSetImageBlock(image, imageData, cacheType, imageURL);
                 }
+                // 如果设置了动画代码块，就传参并调用代码块
                 if (transition.animations) {
                     transition.animations(view, image);
                 }
@@ -332,6 +343,7 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
                 if (!view.sd_latestOperationKey || ![originalOperationKey isEqualToString:view.sd_latestOperationKey]) {
                     return;
                 }
+                // 如果设置了完成代码块，就传参并调用代码块
                 if (transition.completion) {
                     transition.completion(finished);
                 }
@@ -383,6 +395,7 @@ const int64_t SDWebImageProgressUnitCountUnknown = 1LL;
         }];
 #endif
     } else {
+        // 如果设置了设置图片代码块就传参并调用代码块
         if (finalSetImageBlock) {
             finalSetImageBlock(image, imageData, cacheType, imageURL);
         }

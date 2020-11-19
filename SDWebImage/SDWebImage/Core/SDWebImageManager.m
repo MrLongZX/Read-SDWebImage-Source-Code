@@ -111,6 +111,7 @@ static id<SDImageLoader> _defaultImageLoader;
     return key;
 }
 
+// 获取url对应的缓存key
 - (nullable NSString *)cacheKeyForURL:(nullable NSURL *)url context:(nullable SDWebImageContext *)context {
     if (!url) {
         return @"";
@@ -170,29 +171,37 @@ static id<SDImageLoader> _defaultImageLoader;
                                          progress:(nullable SDImageLoaderProgressBlock)progressBlock
                                         completed:(nonnull SDInternalCompletionBlock)completedBlock {
     // Invoking this method without a completedBlock is pointless
+    // 完成回调代码块是必传的
     NSAssert(completedBlock != nil, @"If you mean to prefetch the image, use -[SDWebImagePrefetcher prefetchURLs] instead");
 
     // Very common mistake is to send the URL using NSString object instead of NSURL. For some strange reason, Xcode won't
     // throw any warning for this type mismatch. Here we failsafe this error by allowing URLs to be passed as NSString.
+    // 参数要求传NSURL对象,但是传NSStriing对象不会有警告，所以做一下处理
     if ([url isKindOfClass:NSString.class]) {
         url = [NSURL URLWithString:(NSString *)url];
     }
 
     // Prevents app crashing on argument type error like sending NSNull instead of NSURL
+    // 防止参数url的类型错误导致崩溃，如url的值是NSNull类型
     if (![url isKindOfClass:NSURL.class]) {
         url = nil;
     }
 
+    // 生成一个图片加载操作的封装对象
     SDWebImageCombinedOperation *operation = [SDWebImageCombinedOperation new];
     operation.manager = self;
 
+    // 请求加载图片的地址连接,是否在加载失败的地址链接集合中，也就是说这次请求加载的图片，以前是否加载失败过
     BOOL isFailedUrl = NO;
     if (url) {
+        // 通过信号量,实现加锁
         SD_LOCK(self.failedURLsLock);
         isFailedUrl = [self.failedURLs containsObject:url];
+        // 通过信号量,实现解锁
         SD_UNLOCK(self.failedURLsLock);
     }
 
+    // 如果链接地址不正确，或者之前加载失败过但是也没设置失败可重试，就直接回调错误并返回
     if (url.absoluteString.length == 0 || (!(options & SDWebImageRetryFailed) && isFailedUrl)) {
         NSString *description = isFailedUrl ? @"Image url is blacklisted" : @"Image url is nil";
         NSInteger code = isFailedUrl ? SDWebImageErrorBlackListed : SDWebImageErrorInvalidURL;
@@ -200,14 +209,19 @@ static id<SDImageLoader> _defaultImageLoader;
         return operation;
     }
 
+    // 加锁
     SD_LOCK(self.runningOperationsLock);
+    // 将当前操作对象添加到集合中保存
     [self.runningOperations addObject:operation];
+    // 解锁
     SD_UNLOCK(self.runningOperationsLock);
     
     // Preprocess the options and context arg to decide the final the result for manager
+    // 预处理选项和上下文以确定操作结果对象
     SDWebImageOptionsResult *result = [self processedResultForURL:url options:options context:context];
     
     // Start the entry to load image from cache
+    // 开始从缓存加载图片
     [self callCacheProcessForOperation:operation url:url options:result.options context:result.context progress:progressBlock completed:completedBlock];
 
     return operation;
@@ -253,6 +267,7 @@ static id<SDImageLoader> _defaultImageLoader;
                             progress:(nullable SDImageLoaderProgressBlock)progressBlock
                            completed:(nullable SDInternalCompletionBlock)completedBlock {
     // Grab the image cache to use
+    // 获取图片缓存对象
     id<SDImageCache> imageCache;
     if ([context[SDWebImageContextImageCache] conformsToProtocol:@protocol(SDImageCache)]) {
         imageCache = context[SDWebImageContextImageCache];
@@ -261,14 +276,17 @@ static id<SDImageLoader> _defaultImageLoader;
     }
     
     // Get the query cache type
+    // 获取请求缓存类型
     SDImageCacheType queryCacheType = SDImageCacheTypeAll;
     if (context[SDWebImageContextQueryCacheType]) {
         queryCacheType = [context[SDWebImageContextQueryCacheType] integerValue];
     }
     
     // Check whether we should query cache
+    // 检查是否应该查询缓存
     BOOL shouldQueryCache = !SD_OPTIONS_CONTAINS(options, SDWebImageFromLoaderOnly);
     if (shouldQueryCache) {
+        // url对应的缓存key
         NSString *key = [self cacheKeyForURL:url context:context];
         @weakify(operation);
         operation.cacheOperation = [imageCache queryImageForKey:key options:options context:context cacheType:queryCacheType completion:^(UIImage * _Nullable cachedImage, NSData * _Nullable cachedData, SDImageCacheType cacheType) {
@@ -639,24 +657,29 @@ static id<SDImageLoader> _defaultImageLoader;
 
 - (SDWebImageOptionsResult *)processedResultForURL:(NSURL *)url options:(SDWebImageOptions)options context:(SDWebImageContext *)context {
     SDWebImageOptionsResult *result;
+    // 初始化字典
     SDWebImageMutableContext *mutableContext = [SDWebImageMutableContext dictionary];
     
     // Image Transformer from manager
+    // 如果 context 中没有 transformer数据,则进行设置
     if (!context[SDWebImageContextImageTransformer]) {
         id<SDImageTransformer> transformer = self.transformer;
         [mutableContext setValue:transformer forKey:SDWebImageContextImageTransformer];
     }
     // Cache key filter from manager
+    // 如果 context 中没有 cacheKeyFilter 数据,则进行设置
     if (!context[SDWebImageContextCacheKeyFilter]) {
         id<SDWebImageCacheKeyFilter> cacheKeyFilter = self.cacheKeyFilter;
         [mutableContext setValue:cacheKeyFilter forKey:SDWebImageContextCacheKeyFilter];
     }
     // Cache serializer from manager
+    // 如果 context 中没有 cacheSerializer 数据,则进行设置
     if (!context[SDWebImageContextCacheSerializer]) {
         id<SDWebImageCacheSerializer> cacheSerializer = self.cacheSerializer;
         [mutableContext setValue:cacheSerializer forKey:SDWebImageContextCacheSerializer];
     }
     
+    // 内部对 context 进行了设置, context 不为空,则合并为一个新 context
     if (mutableContext.count > 0) {
         if (context) {
             [mutableContext addEntriesFromDictionary:context];
@@ -665,11 +688,14 @@ static id<SDImageLoader> _defaultImageLoader;
     }
     
     // Apply options processor
+    // 提供选择处理
     if (self.optionsProcessor) {
         result = [self.optionsProcessor processedResultForURL:url options:options context:context];
     }
+    // 如果没有进行选择处理
     if (!result) {
         // Use default options result
+        // 使用默认操作结果对象
         result = [[SDWebImageOptionsResult alloc] initWithOptions:options context:context];
     }
     

@@ -85,6 +85,8 @@
 #define NS_OPTIONS(_type, _name) enum _name : _type _name; enum _name : _type
 #endif
 
+// 如果当前所在队列是主队列就直接执行代码块；
+// 如果当前所在队列不是主队列就在主队列异步执行传入的代码块，其实就是确保传入的代码块block在主线程主队列中调用。
 #ifndef dispatch_main_async_safe
 #define dispatch_main_async_safe(block)\
     if (dispatch_queue_get_label(DISPATCH_CURRENT_QUEUE_LABEL) == dispatch_queue_get_label(dispatch_get_main_queue())) {\
