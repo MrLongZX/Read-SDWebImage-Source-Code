@@ -12,6 +12,7 @@
 /**
  A protocol to allow custom memory cache used in SDImageCache.
  */
+// 定义协议
 @protocol SDMemoryCache <NSObject>
 
 @required
@@ -71,8 +72,10 @@
 /**
  A memory cache which auto purge the cache on memory warning and support weak cache.
  */
+// 继承于NSCache,遵循SDMemoryCache协议
 @interface SDMemoryCache <KeyType, ObjectType> : NSCache <KeyType, ObjectType> <SDMemoryCache>
 
+// 缓存配置信息
 @property (nonatomic, strong, nonnull, readonly) SDImageCacheConfig *config;
 
 @end

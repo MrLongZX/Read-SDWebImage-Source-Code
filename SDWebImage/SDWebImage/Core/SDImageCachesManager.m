@@ -47,9 +47,13 @@
 }
 
 - (NSArray<id<SDImageCache>> *)caches {
+    // 加锁
     SD_LOCK(self.cachesLock);
+    // copy图片缓存数组
     NSArray<id<SDImageCache>> *caches = [_imageCaches copy];
+    // 解锁
     SD_UNLOCK(self.cachesLock);
+    // 返回数组
     return caches;
 }
 
@@ -89,13 +93,17 @@
 }
 
 - (id<SDWebImageOperation>)queryImageForKey:(NSString *)key options:(SDWebImageOptions)options context:(SDWebImageContext *)context cacheType:(SDImageCacheType)cacheType completion:(SDImageCacheQueryCompletionBlock)completionBlock {
+    // key为空,返回
     if (!key) {
         return nil;
     }
+    // 获取图片缓存数组
     NSArray<id<SDImageCache>> *caches = self.caches;
     NSUInteger count = caches.count;
+    // 如果没有图片缓存,返回nil
     if (count == 0) {
         return nil;
+    // 如果只有一个图片缓存对象
     } else if (count == 1) {
         return [caches.firstObject queryImageForKey:key options:options context:context cacheType:cacheType completion:completionBlock];
     }

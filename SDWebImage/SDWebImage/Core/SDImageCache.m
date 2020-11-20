@@ -348,6 +348,7 @@ static NSString * _defaultDiskCacheDirectory;
     return imageData;
 }
 
+// 从内存缓存中获取图片
 - (nullable UIImage *)imageFromMemoryCacheForKey:(nullable NSString *)key {
     return [self.memoryCache objectForKey:key];
 }
@@ -383,20 +384,25 @@ static NSString * _defaultDiskCacheDirectory;
     return image;
 }
 
+// 获取沙盒图片数据
 - (nullable NSData *)diskImageDataBySearchingAllPathsForKey:(nullable NSString *)key {
     if (!key) {
         return nil;
     }
     
+    // 获取沙盒缓存数据
     NSData *data = [self.diskCache dataForKey:key];
     if (data) {
         return data;
     }
     
     // Addtional cache path for custom pre-load cache
+    // 是否有另外的缓存路径block
     if (self.additionalCachePathBlock) {
+        // 获取文件路径
         NSString *filePath = self.additionalCachePathBlock(key);
         if (filePath) {
+            // 加载图片数据
             data = [NSData dataWithContentsOfFile:filePath options:self.config.diskCacheReadingOptions error:nil];
         }
     }
@@ -461,6 +467,7 @@ static NSString * _defaultDiskCacheDirectory;
 }
 
 - (nullable NSOperation *)queryCacheOperationForKey:(nullable NSString *)key options:(SDImageCacheOptions)options context:(nullable SDWebImageContext *)context cacheType:(SDImageCacheType)queryCacheType done:(nullable SDImageCacheQueryCompletionBlock)doneBlock {
+    // 如果key为nil,则用doneBlock
     if (!key) {
         if (doneBlock) {
             doneBlock(nil, nil, SDImageCacheTypeNone);
@@ -468,6 +475,7 @@ static NSString * _defaultDiskCacheDirectory;
         return nil;
     }
     // Invalid cache type
+    // 无效缓存类型
     if (queryCacheType == SDImageCacheTypeNone) {
         if (doneBlock) {
             doneBlock(nil, nil, SDImageCacheTypeNone);
@@ -477,11 +485,15 @@ static NSString * _defaultDiskCacheDirectory;
     
     // First check the in-memory cache...
     UIImage *image;
+    // 缓存类型不是硬盘缓存
     if (queryCacheType != SDImageCacheTypeDisk) {
+        // 从缓存中获取图片
         image = [self imageFromMemoryCacheForKey:key];
     }
     
+    // 缓存中图片存在
     if (image) {
+        // 对动画图像解码第一帧
         if (options & SDImageCacheDecodeFirstFrameOnly) {
             // Ensure static image
             Class animatedImageClass = image.class;
@@ -492,6 +504,7 @@ static NSString * _defaultDiskCacheDirectory;
                 image = [[UIImage alloc] initWithCGImage:image.CGImage scale:image.scale orientation:image.imageOrientation];
 #endif
             }
+        // 检查图像类别匹配
         } else if (options & SDImageCacheMatchAnimatedImageClass) {
             // Check image class matching
             Class animatedImageClass = image.class;
@@ -503,8 +516,10 @@ static NSString * _defaultDiskCacheDirectory;
     }
 
     BOOL shouldQueryMemoryOnly = (queryCacheType == SDImageCacheTypeMemory) || (image && !(options & SDImageCacheQueryMemoryData));
+    // 是否值查询内存
     if (shouldQueryMemoryOnly) {
         if (doneBlock) {
+            // 返回图片
             doneBlock(image, nil, SDImageCacheTypeMemory);
         }
         return nil;
@@ -515,9 +530,11 @@ static NSString * _defaultDiskCacheDirectory;
     // Check whether we need to synchronously query disk
     // 1. in-memory cache hit & memoryDataSync
     // 2. in-memory cache miss & diskDataSync
+    // 是否同步查询硬盘
     BOOL shouldQueryDiskSync = ((image && options & SDImageCacheQueryMemoryDataSync) ||
                                 (!image && options & SDImageCacheQueryDiskDataSync));
     void(^queryDiskBlock)(void) =  ^{
+        // 操作在被取消状态
         if (operation.isCancelled) {
             if (doneBlock) {
                 doneBlock(nil, nil, SDImageCacheTypeNone);
@@ -526,11 +543,15 @@ static NSString * _defaultDiskCacheDirectory;
         }
         
         @autoreleasepool {
+            // 获取沙盒缓存图片数据
             NSData *diskData = [self diskImageDataBySearchingAllPathsForKey:key];
             UIImage *diskImage;
+            // 缓存中存在图片
             if (image) {
                 // the image is from in-memory cache, but need image data
+                // 赋值
                 diskImage = image;
+            // 沙盒中存在图片
             } else if (diskData) {
                 BOOL shouldCacheToMomery = YES;
                 if (context[SDWebImageContextStoreCacheType]) {
@@ -559,8 +580,10 @@ static NSString * _defaultDiskCacheDirectory;
     
     // Query in ioQueue to keep IO-safe
     if (shouldQueryDiskSync) {
+        // 同步串行队列查询
         dispatch_sync(self.ioQueue, queryDiskBlock);
     } else {
+        // 异步串行队列查询
         dispatch_async(self.ioQueue, queryDiskBlock);
     }
     
@@ -743,6 +766,7 @@ static NSString * _defaultDiskCacheDirectory;
 }
 
 - (id<SDWebImageOperation>)queryImageForKey:(NSString *)key options:(SDWebImageOptions)options context:(nullable SDWebImageContext *)context cacheType:(SDImageCacheType)cacheType completion:(nullable SDImageCacheQueryCompletionBlock)completionBlock {
+    // 处理缓存选项
     SDImageCacheOptions cacheOptions = 0;
     if (options & SDWebImageQueryMemoryData) cacheOptions |= SDImageCacheQueryMemoryData;
     if (options & SDWebImageQueryMemoryDataSync) cacheOptions |= SDImageCacheQueryMemoryDataSync;

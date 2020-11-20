@@ -15,15 +15,19 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
 
 @interface SDMemoryCache <KeyType, ObjectType> ()
 
+// 缓存配置信息
 @property (nonatomic, strong, nullable) SDImageCacheConfig *config;
 #if SD_UIKIT
+// 缓存信息
 @property (nonatomic, strong, nonnull) NSMapTable<KeyType, ObjectType> *weakCache; // strong-weak cache
+// 锁,保证数据安全
 @property (nonatomic, strong, nonnull) dispatch_semaphore_t weakCacheLock; // a lock to keep the access to `weakCache` thread-safe
 #endif
 @end
 
 @implementation SDMemoryCache
 
+// 移除观察者、通知、代理
 - (void)dealloc {
     [_config removeObserver:self forKeyPath:NSStringFromSelector(@selector(maxMemoryCost)) context:SDMemoryCacheContext];
     [_config removeObserver:self forKeyPath:NSStringFromSelector(@selector(maxMemoryCount)) context:SDMemoryCacheContext];
@@ -51,6 +55,7 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
     return self;
 }
 
+// 初始化 config, weakCache, weakCacheLock 变量, 添加一个内存警告监听, 内存警告时释放内存.
 - (void)commonInit {
     SDImageCacheConfig *config = self.config;
     self.totalCostLimit = config.maxMemoryCost;
@@ -77,7 +82,12 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
     [super removeAllObjects];
 }
 
+// shouldUseWeakMemoryCache: 为 true 是将数保存到 weakCache, 反之不保存到 weakCache;获取是为 flase 是直接返回父类查出数据. 反之判断内存中是否有对应数据,没有再在 weakCache 获取,并保存到内存.
+
+
 // `setObject:forKey:` just call this with 0 cost. Override this is enough
+// 保存数据 重写父类方法,首先将数据保存内存,然后再将数据存储在 weakCache.(weakCacheLock保证数据安全)
+// 如果 shouldUseWeakMemoryCache 为 false 则不存储到 weakCache.
 - (void)setObject:(id)obj forKey:(id)key cost:(NSUInteger)g {
     [super setObject:obj forKey:key cost:g];
     if (!self.config.shouldUseWeakMemoryCache) {
@@ -91,6 +101,7 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
     }
 }
 
+// 获取数据 重写父类方法. 判断是否是弱内存缓存,否: 直接返回父类查询对象.是: 在 weakCache 取出相应对象并保存内存中返回.
 - (id)objectForKey:(id)key {
     id obj = [super objectForKey:key];
     if (!self.config.shouldUseWeakMemoryCache) {
@@ -113,6 +124,7 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
     return obj;
 }
 
+// 根据 key 移除数据 重写父类方法. 如果 shouldUseWeakMemoryCache 为 false 只移除内存数据,为 true 移除 weakCache.
 - (void)removeObjectForKey:(id)key {
     [super removeObjectForKey:key];
     if (!self.config.shouldUseWeakMemoryCache) {
@@ -126,6 +138,7 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
     }
 }
 
+// 移除数据 重写父类方法. 如果 shouldUseWeakMemoryCache 为 false 只移除内存数据,为 true 移除 weakCache.
 - (void)removeAllObjects {
     [super removeAllObjects];
     if (!self.config.shouldUseWeakMemoryCache) {
@@ -139,7 +152,7 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
 #endif
 
 #pragma mark - KVO
-
+// 通过观察者设置最大内存占有量与最大内存缓存数量
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context {
     if (context == SDMemoryCacheContext) {
         if ([keyPath isEqualToString:NSStringFromSelector(@selector(maxMemoryCost))]) {
