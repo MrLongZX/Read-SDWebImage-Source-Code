@@ -293,11 +293,14 @@ static id<SDImageLoader> _defaultImageLoader;
             @strongify(operation);
             if (!operation || operation.isCancelled) {
                 // Image combined operation cancelled by user
+                // 用户取消了图像组合操作
                 [self callCompletionBlockForOperation:operation completion:completedBlock error:[NSError errorWithDomain:SDWebImageErrorDomain code:SDWebImageErrorCancelled userInfo:@{NSLocalizedDescriptionKey : @"Operation cancelled by user during querying the cache"}] url:url];
+                // 移除operation
                 [self safelyRemoveOperationFromRunning:operation];
                 return;
             } else if (context[SDWebImageContextImageTransformer] && !cachedImage) {
                 // Have a chance to query original cache instead of downloading
+                // 有机会查询缓存代替下载
                 [self callOriginalCacheProcessForOperation:operation url:url options:options context:context progress:progressBlock completed:completedBlock];
                 return;
             }
@@ -307,6 +310,7 @@ static id<SDImageLoader> _defaultImageLoader;
         }];
     } else {
         // Continue download process
+        // 进行下载
         [self callDownloadProcessForOperation:operation url:url options:options context:context cachedImage:nil cachedData:nil cacheType:SDImageCacheTypeNone progress:progressBlock completed:completedBlock];
     }
 }

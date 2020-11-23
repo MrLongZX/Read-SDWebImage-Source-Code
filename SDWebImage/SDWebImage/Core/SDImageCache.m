@@ -466,8 +466,9 @@ static NSString * _defaultDiskCacheDirectory;
     return [self queryCacheOperationForKey:key options:options context:context cacheType:SDImageCacheTypeAll done:doneBlock];
 }
 
+// 根据key查询缓存
 - (nullable NSOperation *)queryCacheOperationForKey:(nullable NSString *)key options:(SDImageCacheOptions)options context:(nullable SDWebImageContext *)context cacheType:(SDImageCacheType)queryCacheType done:(nullable SDImageCacheQueryCompletionBlock)doneBlock {
-    // 如果key为nil,则用doneBlock
+    // 如果key为nil,直接调用doneBlock
     if (!key) {
         if (doneBlock) {
             doneBlock(nil, nil, SDImageCacheTypeNone);
@@ -559,13 +560,17 @@ static NSString * _defaultDiskCacheDirectory;
                     shouldCacheToMomery = (cacheType == SDImageCacheTypeAll || cacheType == SDImageCacheTypeMemory);
                 }
                 // decode image data only if in-memory cache missed
+                // 内存中图片丢失,对沙盒图片数据进行解码
                 diskImage = [self diskImageForKey:key data:diskData options:options context:context];
                 if (shouldCacheToMomery && diskImage && self.config.shouldCacheImagesInMemory) {
                     NSUInteger cost = diskImage.sd_memoryCost;
+                    // 将图片保存到内存中
                     [self.memoryCache setObject:diskImage forKey:key cost:cost];
                 }
             }
             
+            
+            // 调用block
             if (doneBlock) {
                 if (shouldQueryDiskSync) {
                     doneBlock(diskImage, diskData, SDImageCacheTypeDisk);
@@ -587,6 +592,7 @@ static NSString * _defaultDiskCacheDirectory;
         dispatch_async(self.ioQueue, queryDiskBlock);
     }
     
+    // 返回操作对象
     return operation;
 }
 
