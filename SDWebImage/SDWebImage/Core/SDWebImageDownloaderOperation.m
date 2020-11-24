@@ -323,15 +323,19 @@ typedef NSMutableDictionary<NSString *, id> SDCallbacksDictionary;
 
 #pragma mark NSURLSessionDataDelegate
 
+//  当dataTask接收到初试响应时，会调用这个代理方法
 - (void)URLSession:(NSURLSession *)session
           dataTask:(NSURLSessionDataTask *)dataTask
 didReceiveResponse:(NSURLResponse *)response
  completionHandler:(void (^)(NSURLSessionResponseDisposition disposition))completionHandler {
+    // 生成变量保存响应处置为允许继续
     NSURLSessionResponseDisposition disposition = NSURLSessionResponseAllow;
     
     // Check response modifier, if return nil, will marked as cancelled.
     BOOL valid = YES;
+    // 存在响应与响应修改器
     if (self.responseModifier && response) {
+        // 调用响应修改器代理方法,获得修改后的响应
         response = [self.responseModifier modifiedResponseWithResponse:response];
         if (!response) {
             valid = NO;
@@ -339,38 +343,47 @@ didReceiveResponse:(NSURLResponse *)response
         }
     }
     
+    // 生成变量保存响应内容的预期长度，如果没获取到设置为0
     NSInteger expected = (NSInteger)response.expectedContentLength;
     expected = expected > 0 ? expected : 0;
     self.expectedSize = expected;
+    // 用属性保存响应对象
     self.response = response;
     
+    // 生成变量保存状态码，如果没获取到设为为200
     NSInteger statusCode = [response respondsToSelector:@selector(statusCode)] ? ((NSHTTPURLResponse *)response).statusCode : 200;
     // Status code should between [200,400)
     BOOL statusCodeValid = statusCode >= 200 && statusCode < 400;
+    // 生成变量保存有效性，如果状态码大于等于200、小于400就有效
     if (!statusCodeValid) {
         valid = NO;
         self.responseError = [NSError errorWithDomain:SDWebImageErrorDomain code:SDWebImageErrorInvalidDownloadStatusCode userInfo:@{NSLocalizedDescriptionKey : @"Download marked as failed because response status code is not in 200-400", SDWebImageErrorDownloadStatusCodeKey : @(statusCode)}];
     }
     //'304 Not Modified' is an exceptional one
     //URLSession current behavior will return 200 status code when the server respond 304 and URLCache hit. But this is not a standard behavior and we just add a check
+    // 如果状态码是304，并且没有缓存数据，也是无效的
     if (statusCode == 304 && !self.cachedData) {
         valid = NO;
         self.responseError = [NSError errorWithDomain:SDWebImageErrorDomain code:SDWebImageErrorCacheNotModified userInfo:@{NSLocalizedDescriptionKey : @"Download response status code is 304 not modified and ignored"}];
     }
     
     if (valid) {
+        // 如果是有效的就调用进度回调代码块
         for (SDWebImageDownloaderProgressBlock progressBlock in [self callbacksForKey:kProgressCallbackKey]) {
             progressBlock(0, expected, self.request.URL);
         }
     } else {
         // Status code invalid and marked as cancelled. Do not call `[self.dataTask cancel]` which may mass up URLSession life cycle
+        // 如果是无效的就设置响应处置为取消
         disposition = NSURLSessionResponseCancel;
     }
+    // 主队列异步发送通知告知已收到响应
     __block typeof(self) strongSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:SDWebImageDownloadReceiveResponseNotification object:strongSelf];
     });
     
+    // 调用完成处理代码块并传递响应处置设置
     if (completionHandler) {
         completionHandler(disposition);
     }
