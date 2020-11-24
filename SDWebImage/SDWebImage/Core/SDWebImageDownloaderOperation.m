@@ -149,7 +149,9 @@ typedef NSMutableDictionary<NSString *, id> SDCallbacksDictionary;
 }
 
 - (void)start {
+    // 加锁
     @synchronized (self) {
+        // 如果已经被设置为取消状态就直接复位，然后返回了
         if (self.isCancelled) {
             self.finished = YES;
             // Operation cancelled by user before sending the request
@@ -159,18 +161,25 @@ typedef NSMutableDictionary<NSString *, id> SDCallbacksDictionary;
         }
 
 #if SD_UIKIT
+        // 查看是否能获取到UIApplication类
         Class UIApplicationClass = NSClassFromString(@"UIApplication");
         BOOL hasApplication = UIApplicationClass && [UIApplicationClass respondsToSelector:@selector(sharedApplication)];
+        // 如果有UIApplication类，并且设置了进入后台依旧下载的选项
         if (hasApplication && [self shouldContinueWhenAppEntersBackground]) {
+            // 开启后台下载
             __weak typeof(self) wself = self;
             UIApplication * app = [UIApplicationClass performSelector:@selector(sharedApplication)];
             self.backgroundTaskId = [app beginBackgroundTaskWithExpirationHandler:^{
+                // 如果后台任务执行结束，就取消任务
                 [wself cancel];
             }];
         }
 #endif
+        // 获取传入的网络会话对象
         NSURLSession *session = self.unownedSession;
+        // 如果没有传入网络会话对象
         if (!session) {
+            // 生成一个网络会话对象
             NSURLSessionConfiguration *sessionConfig = [NSURLSessionConfiguration defaultSessionConfiguration];
             sessionConfig.timeoutIntervalForRequest = 15;
             
@@ -185,8 +194,10 @@ typedef NSMutableDictionary<NSString *, id> SDCallbacksDictionary;
             self.ownedSession = session;
         }
         
+        // 如果设置了忽略从NSURLCache中获取缓存的选项
         if (self.options & SDWebImageDownloaderIgnoreCachedResponse) {
             // Grab the cached data for later check
+            // 获取NSURLCache中的缓存，并保存
             NSURLCache *URLCache = session.configuration.URLCache;
             if (!URLCache) {
                 URLCache = [NSURLCache sharedURLCache];
@@ -201,11 +212,15 @@ typedef NSMutableDictionary<NSString *, id> SDCallbacksDictionary;
             }
         }
         
+        // 生成NSURLSessionTask类对象
         self.dataTask = [session dataTaskWithRequest:self.request];
+        // 设置属性为开始执行
         self.executing = YES;
     }
 
+    // 如果NSURLSessionTask类对象存在
     if (self.dataTask) {
+        // 设置dataTask/coderQueue两个的优先级
         if (self.options & SDWebImageDownloaderHighPriority) {
             self.dataTask.priority = NSURLSessionTaskPriorityHigh;
             self.coderQueue.qualityOfService = NSQualityOfServiceUserInteractive;
@@ -216,15 +231,19 @@ typedef NSMutableDictionary<NSString *, id> SDCallbacksDictionary;
             self.dataTask.priority = NSURLSessionTaskPriorityDefault;
             self.coderQueue.qualityOfService = NSQualityOfServiceDefault;
         }
+        // 开始执行任务
         [self.dataTask resume];
+        // 获取到进度回调代码块并调用
         for (SDWebImageDownloaderProgressBlock progressBlock in [self callbacksForKey:kProgressCallbackKey]) {
             progressBlock(0, NSURLResponseUnknownLength, self.request.URL);
         }
         __block typeof(self) strongSelf = self;
+        // 异步主队列发送下载开始通知
         dispatch_async(dispatch_get_main_queue(), ^{
             [[NSNotificationCenter defaultCenter] postNotificationName:SDWebImageDownloadStartNotification object:strongSelf];
         });
     } else {
+        // 如果没有获取到NSURLSessionTask类对象，就回调错误并返回
         [self callCompletionBlocksWithError:[NSError errorWithDomain:SDWebImageErrorDomain code:SDWebImageErrorInvalidDownloadOperation userInfo:@{NSLocalizedDescriptionKey : @"Task can't be initialized"}]];
         [self done];
     }

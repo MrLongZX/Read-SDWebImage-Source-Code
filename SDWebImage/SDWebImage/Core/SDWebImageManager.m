@@ -389,14 +389,17 @@ static id<SDImageLoader> _defaultImageLoader;
                                progress:(nullable SDImageLoaderProgressBlock)progressBlock
                               completed:(nullable SDInternalCompletionBlock)completedBlock {
     // Grab the image loader to use
+    // 获取图片加载器
     id<SDImageLoader> imageLoader;
     if ([context[SDWebImageContextImageLoader] conformsToProtocol:@protocol(SDImageLoader)]) {
         imageLoader = context[SDWebImageContextImageLoader];
     } else {
+        // 默认使用
         imageLoader = self.imageLoader;
     }
     
     // Check whether we should download image from network
+    // 检查是否应该从网络下载图片
     BOOL shouldDownload = !SD_OPTIONS_CONTAINS(options, SDWebImageFromCacheOnly);
     shouldDownload &= (!cachedImage || options & SDWebImageRefreshCached);
     shouldDownload &= (![self.delegate respondsToSelector:@selector(imageManager:shouldDownloadImageForURL:)] || [self.delegate imageManager:self shouldDownloadImageForURL:url]);
@@ -405,6 +408,7 @@ static id<SDImageLoader> _defaultImageLoader;
         if (cachedImage && options & SDWebImageRefreshCached) {
             // If image was found in the cache but SDWebImageRefreshCached is provided, notify about the cached image
             // AND try to re-download it in order to let a chance to NSURLCache to refresh it from server.
+            // 回调缓存图片
             [self callCompletionBlockForOperation:operation completion:completedBlock image:cachedImage data:cachedData error:nil cacheType:cacheType finished:YES url:url];
             // Pass the cached image to the image loader. The image loader should check whether the remote image is equal to the cached image.
             SDWebImageMutableContext *mutableContext;
@@ -422,16 +426,20 @@ static id<SDImageLoader> _defaultImageLoader;
             @strongify(operation);
             if (!operation || operation.isCancelled) {
                 // Image combined operation cancelled by user
+                // 用户取消了图像组合操作
                 [self callCompletionBlockForOperation:operation completion:completedBlock error:[NSError errorWithDomain:SDWebImageErrorDomain code:SDWebImageErrorCancelled userInfo:@{NSLocalizedDescriptionKey : @"Operation cancelled by user during sending the request"}] url:url];
             } else if (cachedImage && options & SDWebImageRefreshCached && [error.domain isEqualToString:SDWebImageErrorDomain] && error.code == SDWebImageErrorCacheNotModified) {
                 // Image refresh hit the NSURLCache cache, do not call the completion block
             } else if ([error.domain isEqualToString:SDWebImageErrorDomain] && error.code == SDWebImageErrorCancelled) {
                 // Download operation cancelled by user before sending the request, don't block failed URL
+                // 发送请求前,下载操作被用户取消
                 [self callCompletionBlockForOperation:operation completion:completedBlock error:error url:url];
             } else if (error) {
+                // 存在错误
                 [self callCompletionBlockForOperation:operation completion:completedBlock error:error url:url];
                 BOOL shouldBlockFailedURL = [self shouldBlockFailedURLWithURL:url error:error options:options context:context];
                 
+                // 将url添加近失败集合
                 if (shouldBlockFailedURL) {
                     SD_LOCK(self.failedURLsLock);
                     [self.failedURLs addObject:url];
@@ -444,6 +452,7 @@ static id<SDImageLoader> _defaultImageLoader;
                     SD_UNLOCK(self.failedURLsLock);
                 }
                 // Continue store cache process
+                // 缓存下载的图片
                 [self callStoreCacheProcessForOperation:operation url:url options:options context:context downloadedImage:downloadedImage downloadedData:downloadedData finished:finished progress:progressBlock completed:completedBlock];
             }
             
@@ -452,10 +461,12 @@ static id<SDImageLoader> _defaultImageLoader;
             }
         }];
     } else if (cachedImage) {
+        // 不允许下载,有缓存图片时,带上图片返回
         [self callCompletionBlockForOperation:operation completion:completedBlock image:cachedImage data:cachedData error:nil cacheType:cacheType finished:YES url:url];
         [self safelyRemoveOperationFromRunning:operation];
     } else {
         // Image not in cache and download disallowed by delegate
+        // 图片不在缓存中,并不不允许下载
         [self callCompletionBlockForOperation:operation completion:completedBlock image:nil data:nil error:nil cacheType:SDImageCacheTypeNone finished:YES url:url];
         [self safelyRemoveOperationFromRunning:operation];
     }
