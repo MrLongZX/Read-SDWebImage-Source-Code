@@ -18,7 +18,7 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
 // 缓存配置信息
 @property (nonatomic, strong, nullable) SDImageCacheConfig *config;
 #if SD_UIKIT
-// 缓存信息
+// 缓存图片table
 @property (nonatomic, strong, nonnull) NSMapTable<KeyType, ObjectType> *weakCache; // strong-weak cache
 // 锁,保证数据安全
 @property (nonatomic, strong, nonnull) dispatch_semaphore_t weakCacheLock; // a lock to keep the access to `weakCache` thread-safe
@@ -89,14 +89,18 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
 // 保存数据 重写父类方法,首先将数据保存内存,然后再将数据存储在 weakCache.(weakCacheLock保证数据安全)
 // 如果 shouldUseWeakMemoryCache 为 false 则不存储到 weakCache.
 - (void)setObject:(id)obj forKey:(id)key cost:(NSUInteger)g {
+    // 缓存到NSCache
     [super setObject:obj forKey:key cost:g];
     if (!self.config.shouldUseWeakMemoryCache) {
         return;
     }
     if (key && obj) {
         // Store weak cache
+        // 加锁
         SD_LOCK(self.weakCacheLock);
+        // 缓存到NSMapTable对象中
         [self.weakCache setObject:obj forKey:key];
+        // 解锁
         SD_UNLOCK(self.weakCacheLock);
     }
 }

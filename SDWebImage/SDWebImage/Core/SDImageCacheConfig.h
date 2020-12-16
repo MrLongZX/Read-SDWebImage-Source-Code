@@ -33,6 +33,7 @@ typedef NS_ENUM(NSUInteger, SDImageCacheConfigExpireType) {
  The class contains all the config for image cache
  @note This class conform to NSCopying, make sure to add the property in `copyWithZone:` as well.
  */
+// 图片缓存的配置类，保存图片缓存的配置或选项
 @interface SDImageCacheConfig : NSObject <NSCopying>
 
 /**

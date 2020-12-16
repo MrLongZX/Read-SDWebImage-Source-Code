@@ -32,6 +32,7 @@
  * AppKit:
  * NSImage currently only support animated via GIF imageRep unlike UIImage. It will check the imageRep's frame count.
  */
+// 是否是动图
 @property (nonatomic, assign, readonly) BOOL sd_isAnimated;
 
 /**
@@ -47,6 +48,7 @@
  * If you don't manually specify a format, this information is retrieve from CGImage using `CGImageGetUTType`, which may return nil for non-CG based image. At this time it will return `SDImageFormatUndefined` as default value.
  * @note Note that because of the limitations of categories this property can get out of sync if you create another instance with CGImage or other methods.
  */
+// 图片格式
 @property (nonatomic, assign) SDImageFormat sd_imageFormat;
 
 /**

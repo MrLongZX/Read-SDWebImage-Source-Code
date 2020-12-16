@@ -67,6 +67,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  *  Cache Config object - storing all kind of settings.
  *  The property is copy so change of current config will not accidentally affect other cache's config.
  */
+// 配置对象
 @property (nonatomic, copy, nonnull, readonly) SDImageCacheConfig *config;
 
 /**
@@ -101,6 +102,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
 /**
  * Returns global shared cache instance
  */
+// 获取单例对象
 @property (nonatomic, class, readonly, nonnull) SDImageCache *sharedImageCache;
 
 /**
@@ -110,6 +112,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  * @note We still preserve the `namespace` arg, which means, if you change this property into `/path/to/use`,  the `SDImageCache.sharedImageCache.diskCachePath` should be `/path/to/use/default` because shared image cache use `default` as namespace.
  * Defaults to nil.
  */
+// 设置默认硬盘缓存路径
 @property (nonatomic, class, readwrite, null_resettable) NSString *defaultDiskCacheDirectory;
 
 /**
@@ -118,6 +121,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  *
  * @param ns The namespace to use for this cache store
  */
+// 通过指定命名空间（也就是保存图像的文件夹名字）来初始化图片缓存类
 - (nonnull instancetype)initWithNamespace:(nonnull NSString *)ns;
 
 /**
@@ -127,6 +131,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  * @param ns        The namespace to use for this cache store
  * @param directory Directory to cache disk images in
  */
+// 通过指定命名空间和磁盘目录来初始化图片缓存类
 - (nonnull instancetype)initWithNamespace:(nonnull NSString *)ns
                        diskCacheDirectory:(nullable NSString *)directory;
 
@@ -150,6 +155,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  @param key The unique image cache key
  @return The cache path. You can check `lastPathComponent` to grab the file name.
  */
+// 获取硬盘缓存路径
 - (nullable NSString *)cachePathForKey:(nullable NSString *)key;
 
 #pragma mark - Store Ops
@@ -161,6 +167,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  * @param key             The unique image cache key, usually it's image absolute URL
  * @param completionBlock A block executed after the operation is finished
  */
+// 将图像异步缓存到指定密钥下的内存和磁盘中
 - (void)storeImage:(nullable UIImage *)image
             forKey:(nullable NSString *)key
         completion:(nullable SDWebImageNoParamsBlock)completionBlock;
@@ -174,6 +181,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  * @param completionBlock A block executed after the operation is finished
  * @note If no image data is provided and encode to disk, we will try to detect the image format (using either `sd_imageFormat` or `SDAnimatedImage` protocol method) and animation status, to choose the best matched format, including GIF, JPEG or PNG.
  */
+// 将图像异步缓存到指定密钥下的内存中，可以选择是否缓存到磁盘中
 - (void)storeImage:(nullable UIImage *)image
             forKey:(nullable NSString *)key
             toDisk:(BOOL)toDisk
@@ -191,6 +199,13 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  * @param completionBlock A block executed after the operation is finished
  * @note If no image data is provided and encode to disk, we will try to detect the image format (using either `sd_imageFormat` or `SDAnimatedImage` protocol method) and animation status, to choose the best matched format, including GIF, JPEG or PNG.
  */
+/*
+将图像异步缓存到指定密钥下的内存中，
+可以选择是否缓存到磁盘中，
+并且可以直接将图像的数据保存到磁盘中，
+就不必再通过将原图像编码后获取图像的数据再保存到磁盘中，
+以节省硬件资源
+*/
 - (void)storeImage:(nullable UIImage *)image
          imageData:(nullable NSData *)imageData
             forKey:(nullable NSString *)key
@@ -203,6 +218,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  * @param image  The image to store
  * @param key    The unique image cache key, usually it's image absolute URL
  */
+//  将图像数据同步缓存到指定密钥下的磁盘中
 - (void)storeImageToMemory:(nullable UIImage*)image
                     forKey:(nullable NSString *)key;
 
@@ -225,6 +241,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  *  @param completionBlock the block to be executed when the check is done.
  *  @note the completion block will be always executed on the main queue
  */
+// 异步查询图像是否在磁盘中
 - (void)diskImageExistsWithKey:(nullable NSString *)key completion:(nullable SDImageCacheCheckCompletionBlock)completionBlock;
 
 /**
@@ -232,6 +249,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  *
  *  @param key             the key describing the url
  */
+// 同步查询图像是否在磁盘中
 - (BOOL)diskImageDataExistsWithKey:(nullable NSString *)key;
 
 #pragma mark - Query and Retrieve Ops
@@ -351,6 +369,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  * @param key             The unique image cache key
  * @param completion      A block that should be executed after the image has been removed (optional)
  */
+// 异步删除内存和磁盘中缓存的指定密钥的图像
 - (void)removeImageForKey:(nullable NSString *)key withCompletion:(nullable SDWebImageNoParamsBlock)completion;
 
 /**
@@ -360,6 +379,10 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
  * @param fromDisk        Also remove cache entry from disk if YES. If NO, the completion block is called synchronously
  * @param completion      A block that should be executed after the image has been removed (optional)
  */
+/**
+异步删除内存中缓存的指定密钥的图像，
+并且可以选择是否也从磁盘中删除对应缓存
+*/
 - (void)removeImageForKey:(nullable NSString *)key fromDisk:(BOOL)fromDisk withCompletion:(nullable SDWebImageNoParamsBlock)completion;
 
 /**
@@ -381,6 +404,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
 /**
  * Synchronously Clear all memory cached images
  */
+// 清除内存中所有缓存的图像
 - (void)clearMemory;
 
 /**
@@ -410,6 +434,7 @@ typedef NS_OPTIONS(NSUInteger, SDImageCacheOptions) {
 /**
  * Asynchronously calculate the disk cache's size.
  */
+// 异步获取磁盘中缓存占用的大小
 - (void)calculateSizeWithCompletionBlock:(nullable SDImageCacheCalculateSizeBlock)completionBlock;
 
 @end
