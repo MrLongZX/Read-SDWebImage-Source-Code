@@ -43,6 +43,8 @@
 /**
  * Integrates SDWebImage async downloading and caching of remote images with UIImageView.
  */
+// 源码阅读参考：
+// [源码阅读：SDWebImage（一）——从使用入手](https://juejin.cn/post/6844903609004457991#heading-7)
 @interface UIImageView (WebCache)
 
 /**
