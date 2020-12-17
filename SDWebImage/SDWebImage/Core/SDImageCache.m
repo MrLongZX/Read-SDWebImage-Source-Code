@@ -43,7 +43,7 @@ static NSString * _defaultDiskCacheDirectory;
     return instance;
 }
 
-// 默认沙盒缓存路径
+// 默认沙盒缓存路径 ~/Library/Caches/com.hackemist.SDImageCache
 + (NSString *)defaultDiskCacheDirectory {
     if (!_defaultDiskCacheDirectory) {
         _defaultDiskCacheDirectory = [[self userCacheDirectory] stringByAppendingPathComponent:@"com.hackemist.SDImageCache"];
@@ -100,6 +100,7 @@ static NSString * _defaultDiskCacheDirectory;
             directory = [self.class defaultDiskCacheDirectory];
         }
         // 添加了文件夹名称的沙盒缓存路径
+        // ~/Library/Caches/com.hackemist.SDImageCache/default/
         _diskCachePath = [directory stringByAppendingPathComponent:ns];
         
         NSAssert([config.diskCacheClass conformsToProtocol:@protocol(SDDiskCache)], @"Custom disk cache class must conform to `SDDiskCache` protocol");
@@ -148,7 +149,7 @@ static NSString * _defaultDiskCacheDirectory;
     return [self.diskCache cachePathForKey:key];
 }
 
-// 用户缓存根路径
+// 用户缓存根路径 ~/Library/Caches
 + (nullable NSString *)userCacheDirectory {
     NSArray<NSString *> *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
     return paths.firstObject;
@@ -242,7 +243,7 @@ static NSString * _defaultDiskCacheDirectory;
                             }
                         }
                     }
-                    // 图片数据
+                    // 对图片进行编码 获取 图片数据
                     data = [[SDImageCodersManager sharedManager] encodedDataWithImage:image format:format options:nil];
                 }
                 // 沙盒缓存
@@ -762,6 +763,7 @@ static NSString * _defaultDiskCacheDirectory;
 #pragma mark - UIApplicationDidEnterBackgroundNotification
 
 #if SD_UIKIT
+// 应用进入后台，移除沙盒过期图片
 - (void)applicationDidEnterBackground:(NSNotification *)notification {
     if (!self.config.shouldRemoveExpiredDataWhenEnterBackground) {
         return;
@@ -999,4 +1001,3 @@ static NSString * _defaultDiskCacheDirectory;
 }
 
 @end
-
