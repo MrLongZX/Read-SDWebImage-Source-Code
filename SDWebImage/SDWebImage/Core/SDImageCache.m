@@ -43,7 +43,7 @@ static NSString * _defaultDiskCacheDirectory;
     return instance;
 }
 
-// 默认硬盘缓存路径
+// 默认沙盒缓存路径
 + (NSString *)defaultDiskCacheDirectory {
     if (!_defaultDiskCacheDirectory) {
         _defaultDiskCacheDirectory = [[self userCacheDirectory] stringByAppendingPathComponent:@"com.hackemist.SDImageCache"];
@@ -51,28 +51,28 @@ static NSString * _defaultDiskCacheDirectory;
     return _defaultDiskCacheDirectory;
 }
 
-// 设置硬盘缓存路径
+// 设置沙盒缓存路径
 + (void)setDefaultDiskCacheDirectory:(NSString *)defaultDiskCacheDirectory {
     _defaultDiskCacheDirectory = [defaultDiskCacheDirectory copy];
 }
 
-// 初始化默认硬盘缓存文件夹名称
+// 初始化默认沙盒缓存文件夹名称
 - (instancetype)init {
     return [self initWithNamespace:@"default"];
 }
 
-// 设置硬盘缓存文件夹名称
+// 设置沙盒缓存文件夹名称
 - (nonnull instancetype)initWithNamespace:(nonnull NSString *)ns {
     return [self initWithNamespace:ns diskCacheDirectory:nil];
 }
 
-// 设置硬盘缓存文件夹名称、硬盘缓存路径、
+// 设置沙盒缓存文件夹名称、沙盒缓存路径、
 - (nonnull instancetype)initWithNamespace:(nonnull NSString *)ns
                        diskCacheDirectory:(nullable NSString *)directory {
     return [self initWithNamespace:ns diskCacheDirectory:directory config:SDImageCacheConfig.defaultCacheConfig];
 }
 
-// 设置硬盘缓存文件夹名称、硬盘缓存路径、缓存配置
+// 设置沙盒缓存文件夹名称、沙盒缓存路径、缓存配置
 - (nonnull instancetype)initWithNamespace:(nonnull NSString *)ns
                        diskCacheDirectory:(nullable NSString *)directory
                                    config:(nullable SDImageCacheConfig *)config {
@@ -96,14 +96,14 @@ static NSString * _defaultDiskCacheDirectory;
         // Init the disk cache
         if (!directory) {
             // Use default disk cache directory
-            // 使用默认硬盘缓存路径
+            // 使用默认沙盒缓存路径
             directory = [self.class defaultDiskCacheDirectory];
         }
-        // 添加了文件夹名称的硬盘缓存路径
+        // 添加了文件夹名称的沙盒缓存路径
         _diskCachePath = [directory stringByAppendingPathComponent:ns];
         
         NSAssert([config.diskCacheClass conformsToProtocol:@protocol(SDDiskCache)], @"Custom disk cache class must conform to `SDDiskCache` protocol");
-        // 硬盘缓存
+        // 沙盒缓存
         _diskCache = [[config.diskCacheClass alloc] initWithCachePath:_diskCachePath config:_config];
         
         // Check and migrate disk cache directory if need
@@ -140,7 +140,7 @@ static NSString * _defaultDiskCacheDirectory;
 
 #pragma mark - Cache paths
 
-// 获取硬盘缓存路径
+// 获取沙盒缓存路径
 - (nullable NSString *)cachePathForKey:(nullable NSString *)key {
     if (!key) {
         return nil;
@@ -154,7 +154,7 @@ static NSString * _defaultDiskCacheDirectory;
     return paths.firstObject;
 }
 
-// 迁移硬盘缓存路径
+// 迁移沙盒缓存路径
 - (void)migrateDiskCacheDirectory {
     // 判断类行
     if ([self.diskCache isKindOfClass:[SDDiskCache class]]) {
@@ -245,7 +245,7 @@ static NSString * _defaultDiskCacheDirectory;
                     // 图片数据
                     data = [[SDImageCodersManager sharedManager] encodedDataWithImage:image format:format options:nil];
                 }
-                // 硬盘缓存
+                // 沙盒缓存
                 [self _storeImageDataToDisk:data forKey:key];
                 if (image) {
                     // Check extended data
@@ -273,7 +273,7 @@ static NSString * _defaultDiskCacheDirectory;
                             }
                         }
                         if (extendedData) {
-                            // 归档数据硬盘缓存
+                            // 归档数据沙盒缓存
                             [self.diskCache setExtendedData:extendedData forKey:key];
                         }
                     }
@@ -303,7 +303,7 @@ static NSString * _defaultDiskCacheDirectory;
     [self.memoryCache setObject:image forKey:key cost:cost];
 }
 
-// 同步图片硬盘缓存
+// 同步图片沙盒缓存
 - (void)storeImageDataToDisk:(nullable NSData *)imageData
                       forKey:(nullable NSString *)key {
     if (!imageData || !key) {
@@ -316,7 +316,7 @@ static NSString * _defaultDiskCacheDirectory;
 }
 
 // Make sure to call from io queue by caller
-// 图片硬盘缓存
+// 图片沙盒缓存
 - (void)_storeImageDataToDisk:(nullable NSData *)imageData forKey:(nullable NSString *)key {
     if (!imageData || !key) {
         return;
@@ -327,7 +327,7 @@ static NSString * _defaultDiskCacheDirectory;
 
 #pragma mark - Query and Retrieve Ops
 
-// 异步查询图片在硬盘中是否存在
+// 异步查询图片在沙盒中是否存在
 - (void)diskImageExistsWithKey:(nullable NSString *)key completion:(nullable SDImageCacheCheckCompletionBlock)completionBlock {
     dispatch_async(self.ioQueue, ^{
         BOOL exists = [self _diskImageDataExistsWithKey:key];
@@ -339,7 +339,7 @@ static NSString * _defaultDiskCacheDirectory;
     });
 }
 
-// 同步查询图片在硬盘中是否存在
+// 同步查询图片在沙盒中是否存在
 - (BOOL)diskImageDataExistsWithKey:(nullable NSString *)key {
     if (!key) {
         return NO;
@@ -354,7 +354,7 @@ static NSString * _defaultDiskCacheDirectory;
 }
 
 // Make sure to call from io queue by caller
-// 图片在硬盘中是否存在
+// 图片在沙盒中是否存在
 - (BOOL)_diskImageDataExistsWithKey:(nullable NSString *)key {
     if (!key) {
         return NO;
@@ -393,16 +393,19 @@ static NSString * _defaultDiskCacheDirectory;
     return [self.memoryCache objectForKey:key];
 }
 
+// 沙盒获取图片对象
 - (nullable UIImage *)imageFromDiskCacheForKey:(nullable NSString *)key {
     return [self imageFromDiskCacheForKey:key options:0 context:nil];
 }
 
+// 沙盒获取图片对象
 - (nullable UIImage *)imageFromDiskCacheForKey:(nullable NSString *)key options:(SDImageCacheOptions)options context:(nullable SDWebImageContext *)context {
-    // 图片数据
+    // 同步获取沙盒图片数据
     NSData *data = [self diskImageDataForKey:key];
-    //
+    // 获取图片对象
     UIImage *diskImage = [self diskImageForKey:key data:data options:options context:context];
     if (diskImage && self.config.shouldCacheImagesInMemory) {
+        // 将图片对象内存缓存
         NSUInteger cost = diskImage.sd_memoryCost;
         [self.memoryCache setObject:diskImage forKey:key cost:cost];
     }
@@ -410,18 +413,22 @@ static NSString * _defaultDiskCacheDirectory;
     return diskImage;
 }
 
+// 从内存或沙盒获取图片对象
 - (nullable UIImage *)imageFromCacheForKey:(nullable NSString *)key {
     return [self imageFromCacheForKey:key options:0 context:nil];
 }
 
+// 从内存或沙盒获取图片对象
 - (nullable UIImage *)imageFromCacheForKey:(nullable NSString *)key options:(SDImageCacheOptions)options context:(nullable SDWebImageContext *)context {
     // First check the in-memory cache...
+    // 从内存缓存中获取图片
     UIImage *image = [self imageFromMemoryCacheForKey:key];
     if (image) {
         return image;
     }
     
     // Second check the disk cache...
+    // 沙盒获取图片对象
     image = [self imageFromDiskCacheForKey:key options:options context:context];
     return image;
 }
@@ -452,23 +459,30 @@ static NSString * _defaultDiskCacheDirectory;
     return data;
 }
 
+// 获取沙盒图片对象
 - (nullable UIImage *)diskImageForKey:(nullable NSString *)key {
+    // 同步获取沙盒图片数据
     NSData *data = [self diskImageDataForKey:key];
     return [self diskImageForKey:key data:data];
 }
 
+// 图片数据 转 图片对象
 - (nullable UIImage *)diskImageForKey:(nullable NSString *)key data:(nullable NSData *)data {
     return [self diskImageForKey:key data:data options:0 context:nil];
 }
 
+// 将图片数据转为图片对象
 - (nullable UIImage *)diskImageForKey:(nullable NSString *)key data:(nullable NSData *)data options:(SDImageCacheOptions)options context:(SDWebImageContext *)context {
     if (data) {
+        // 解码获取图片对象
         UIImage *image = SDImageCacheDecodeImageData(data, key, [[self class] imageOptionsFromCacheOptions:options], context);
         if (image) {
             // Check extended data
+            // 获取图片扩展数据
             NSData *extendedData = [self.diskCache extendedDataForKey:key];
             if (extendedData) {
                 id extendedObject;
+                // 对图片扩展数据进行解档
                 if (@available(iOS 11, tvOS 11, macOS 10.13, watchOS 4, *)) {
                     NSError *error;
                     NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingFromData:extendedData error:&error];
@@ -487,6 +501,7 @@ static NSString * _defaultDiskCacheDirectory;
                         NSLog(@"NSKeyedUnarchiver unarchive failed with exception: %@", exception);
                     }
                 }
+                // 图片对象关联扩展数据
                 image.sd_extendedObject = extendedObject;
             }
         }
@@ -528,7 +543,7 @@ static NSString * _defaultDiskCacheDirectory;
     
     // First check the in-memory cache...
     UIImage *image;
-    // 缓存类型不是硬盘缓存
+    // 缓存类型不是沙盒缓存
     if (queryCacheType != SDImageCacheTypeDisk) {
         // 从缓存中获取图片
         image = [self imageFromMemoryCacheForKey:key];
@@ -573,7 +588,7 @@ static NSString * _defaultDiskCacheDirectory;
     // Check whether we need to synchronously query disk
     // 1. in-memory cache hit & memoryDataSync
     // 2. in-memory cache miss & diskDataSync
-    // 是否同步查询硬盘
+    // 是否同步查询沙盒
     BOOL shouldQueryDiskSync = ((image && options & SDImageCacheQueryMemoryDataSync) ||
                                 (!image && options & SDImageCacheQueryDiskDataSync));
     void(^queryDiskBlock)(void) =  ^{
@@ -648,16 +663,19 @@ static NSString * _defaultDiskCacheDirectory;
     [self removeImageForKey:key fromMemory:YES fromDisk:fromDisk withCompletion:completion];
 }
 
+// 移除内存或沙盒缓存
 - (void)removeImageForKey:(nullable NSString *)key fromMemory:(BOOL)fromMemory fromDisk:(BOOL)fromDisk withCompletion:(nullable SDWebImageNoParamsBlock)completion {
     if (key == nil) {
         return;
     }
 
+    // 移除内存缓存
     if (fromMemory && self.config.shouldCacheImagesInMemory) {
         [self.memoryCache removeObjectForKey:key];
     }
 
     if (fromDisk) {
+        // 移除沙盒缓存
         dispatch_async(self.ioQueue, ^{
             [self.diskCache removeDataForKey:key];
             
@@ -672,6 +690,7 @@ static NSString * _defaultDiskCacheDirectory;
     }
 }
 
+// 移除内存缓存
 - (void)removeImageFromMemoryForKey:(NSString *)key {
     if (!key) {
         return;
@@ -680,6 +699,7 @@ static NSString * _defaultDiskCacheDirectory;
     [self.memoryCache removeObjectForKey:key];
 }
 
+// 同步移除沙盒缓存
 - (void)removeImageFromDiskForKey:(NSString *)key {
     if (!key) {
         return;
@@ -690,6 +710,7 @@ static NSString * _defaultDiskCacheDirectory;
 }
 
 // Make sure to call from io queue by caller
+// 移除沙盒缓存
 - (void)_removeImageFromDiskForKey:(NSString *)key {
     if (!key) {
         return;
@@ -700,10 +721,12 @@ static NSString * _defaultDiskCacheDirectory;
 
 #pragma mark - Cache clean Ops
 
+// 移除所有内存缓存
 - (void)clearMemory {
     [self.memoryCache removeAllObjects];
 }
 
+// 移除所有沙盒缓存
 - (void)clearDiskOnCompletion:(nullable SDWebImageNoParamsBlock)completion {
     dispatch_async(self.ioQueue, ^{
         [self.diskCache removeAllData];
@@ -715,6 +738,7 @@ static NSString * _defaultDiskCacheDirectory;
     });
 }
 
+// 移除沙盒过期图片
 - (void)deleteOldFilesWithCompletionBlock:(nullable SDWebImageNoParamsBlock)completionBlock {
     dispatch_async(self.ioQueue, ^{
         [self.diskCache removeExpiredData];
@@ -729,6 +753,7 @@ static NSString * _defaultDiskCacheDirectory;
 #pragma mark - UIApplicationWillTerminateNotification
 
 #if SD_UIKIT || SD_MAC
+// 应用终止，移除沙盒过期图片
 - (void)applicationWillTerminate:(NSNotification *)notification {
     [self deleteOldFilesWithCompletionBlock:nil];
 }
@@ -749,12 +774,15 @@ static NSString * _defaultDiskCacheDirectory;
     __block UIBackgroundTaskIdentifier bgTask = [application beginBackgroundTaskWithExpirationHandler:^{
         // Clean up any unfinished task business by marking where you
         // stopped or ending the task outright.
+        // 结束后台任务
         [application endBackgroundTask:bgTask];
         bgTask = UIBackgroundTaskInvalid;
     }];
 
     // Start the long-running task and return immediately.
+    // 移除沙盒过期图片
     [self deleteOldFilesWithCompletionBlock:^{
+        // 结束后台任务
         [application endBackgroundTask:bgTask];
         bgTask = UIBackgroundTaskInvalid;
     }];
@@ -763,6 +791,7 @@ static NSString * _defaultDiskCacheDirectory;
 
 #pragma mark - Cache Info
 
+// 总共沙盒缓存大小
 - (NSUInteger)totalDiskSize {
     __block NSUInteger size = 0;
     dispatch_sync(self.ioQueue, ^{
@@ -771,6 +800,7 @@ static NSString * _defaultDiskCacheDirectory;
     return size;
 }
 
+// 总共沙盒缓存数量
 - (NSUInteger)totalDiskCount {
     __block NSUInteger count = 0;
     dispatch_sync(self.ioQueue, ^{
@@ -779,6 +809,7 @@ static NSString * _defaultDiskCacheDirectory;
     return count;
 }
 
+// 计算沙盒缓存数量与大小
 - (void)calculateSizeWithCompletionBlock:(nullable SDImageCacheCalculateSizeBlock)completionBlock {
     dispatch_async(self.ioQueue, ^{
         NSUInteger fileCount = [self.diskCache totalCount];
@@ -809,10 +840,12 @@ static NSString * _defaultDiskCacheDirectory;
 
 #pragma mark - SDImageCache
 
+// 查询缓存图片
 - (id<SDWebImageOperation>)queryImageForKey:(NSString *)key options:(SDWebImageOptions)options context:(nullable SDWebImageContext *)context completion:(nullable SDImageCacheQueryCompletionBlock)completionBlock {
     return [self queryImageForKey:key options:options context:context cacheType:SDImageCacheTypeAll completion:completionBlock];
 }
 
+// 查询缓存图片
 - (id<SDWebImageOperation>)queryImageForKey:(NSString *)key options:(SDWebImageOptions)options context:(nullable SDWebImageContext *)context cacheType:(SDImageCacheType)cacheType completion:(nullable SDImageCacheQueryCompletionBlock)completionBlock {
     // 处理缓存选项
     SDImageCacheOptions cacheOptions = 0;
@@ -828,6 +861,7 @@ static NSString * _defaultDiskCacheDirectory;
     return [self queryCacheOperationForKey:key options:cacheOptions context:context cacheType:cacheType done:completionBlock];
 }
 
+// 缓存图片
 - (void)storeImage:(UIImage *)image imageData:(NSData *)imageData forKey:(nullable NSString *)key cacheType:(SDImageCacheType)cacheType completion:(nullable SDWebImageNoParamsBlock)completionBlock {
     switch (cacheType) {
         case SDImageCacheTypeNone: {
@@ -855,6 +889,7 @@ static NSString * _defaultDiskCacheDirectory;
     }
 }
 
+// 移除图片缓存
 - (void)removeImageForKey:(NSString *)key cacheType:(SDImageCacheType)cacheType completion:(nullable SDWebImageNoParamsBlock)completionBlock {
     switch (cacheType) {
         case SDImageCacheTypeNone: {
@@ -882,6 +917,7 @@ static NSString * _defaultDiskCacheDirectory;
     }
 }
 
+// 是否包含某图片缓存
 - (void)containsImageForKey:(NSString *)key cacheType:(SDImageCacheType)cacheType completion:(nullable SDImageCacheContainsCompletionBlock)completionBlock {
     switch (cacheType) {
         case SDImageCacheTypeNone: {
@@ -928,6 +964,7 @@ static NSString * _defaultDiskCacheDirectory;
     }
 }
 
+// 清理缓存
 - (void)clearWithCacheType:(SDImageCacheType)cacheType completion:(SDWebImageNoParamsBlock)completionBlock {
     switch (cacheType) {
         case SDImageCacheTypeNone: {
