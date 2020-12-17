@@ -19,6 +19,11 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
 @property (nonatomic, strong, nullable) SDImageCacheConfig *config;
 #if SD_UIKIT
 // 缓存图片table
+/*
+本类继承自NSCache，具有缓存功能，但是还添加了一个NSMapTable类型属性weakCache进行二次缓存。为什么还要再通过属性再缓存一遍？
+关键在于weakCache属性它是NSMapTable类型的，可以设置其value为弱引用。
+当接收到内存警告时，本类会清空缓存，虽然缓存中的图像对象都被清除了，但是部分图像对象会被UIImageView、UIButton等实例对象所持有，这也就意味着有部分图像对象还在内存中。也就是说这部分图像就在weakCache中存在，在本类缓存被清除状态下，就可以直接从weakCache中获取图像对象，这样就比去磁盘中去取效率更高 
+*/
 @property (nonatomic, strong, nonnull) NSMapTable<KeyType, ObjectType> *weakCache; // strong-weak cache
 // 锁,保证数据安全
 @property (nonatomic, strong, nonnull) dispatch_semaphore_t weakCacheLock; // a lock to keep the access to `weakCache` thread-safe
