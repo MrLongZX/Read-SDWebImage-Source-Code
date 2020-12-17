@@ -58,7 +58,7 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
 // 初始化 config, weakCache, weakCacheLock 变量, 添加一个内存警告监听, 内存警告时释放内存.
 - (void)commonInit {
     SDImageCacheConfig *config = self.config;
-    // 最大内存缓存消耗
+    // 最大内存缓存成本
     self.totalCostLimit = config.maxMemoryCost;
     // 最大内存缓存数量
     self.countLimit = config.maxMemoryCount;
